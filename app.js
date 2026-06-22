@@ -22,7 +22,7 @@ let mainChart     = null;
 let dailyChart    = null;
 
 // Meta de atendimentos exibida na barra de porcentagem do topo
-var GOAL_TOTAL = 2700;
+var GOAL_TOTAL = 2637;
 
 function $(id) { return document.getElementById(id); }
 
