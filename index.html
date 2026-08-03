@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PERFORMACE IAIT - ASSISTENTES</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Firebase Compat (funciona direto no navegador sem build) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- SheetJS -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="header-brand">
+        <div class="brand-icon">📊</div>
+        <div>
+          <h1 class="brand-title">PERFORMACE IAIT - ASSISTENTES</h1>
+          <p class="brand-sub" id="currentMonthLabel">Carregando...</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-ghost" id="btnHistory">📅 Histórico</button>
+        <button class="btn btn-outline" id="btnExcel">⬇ Excel</button>
+        <button class="btn btn-primary" id="btnAddEntry">+ Registrar</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- META: BARRA DE PORCENTAGEM + CONTAGEM REGRESSIVA -->
+    <section class="goal-section">
+      <div class="goal-card">
+        <div class="goal-bar-header">
+          <span class="goal-bar-title">🎯 Meta de Atendimentos do Mês</span>
+          <span class="goal-bar-value" id="goalBarText">0 / 2.653 (0%)</span>
+        </div>
+        <div class="goal-bar-track">
+          <div class="goal-bar-fill" id="goalBarFill" style="width:0%"></div>
+        </div>
+        <div class="countdown-row" id="countdownRow">
+          <span class="countdown-icon">⏳</span>
+          <span class="countdown-text" id="countdownText">Calculando dias restantes...</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- META: PARTNUMBERS CONTADOS (separada da meta de atendimentos) -->
+    <section class="goal-section">
+      <div class="goal-card goal-card-alt">
+        <div class="goal-bar-header">
+          <span class="goal-bar-title">🔩 Meta de Partnumbers Contados</span>
+          <span class="goal-bar-value" id="partGoalBarText">0 / 0 (0%)</span>
+        </div>
+        <div class="goal-bar-track">
+          <div class="goal-bar-fill goal-bar-fill-alt" id="partGoalBarFill" style="width:0%"></div>
+        </div>
+        <div class="goal-actions">
+          <button class="btn btn-outline" id="btnManagePartnumbers">📋 Gerenciar Lista</button>
+          <button class="btn btn-primary" id="btnUpdateCount">🔢 Atualizar Quantidade Contada</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="cards-row" id="summaryCards">
+      <div class="card card-blue">
+        <span class="card-label">Total do Mês</span>
+        <span class="card-value" id="cardTotal">0</span>
+        <span class="card-sub">atendimentos</span>
+      </div>
+      <div class="card card-orange">
+        <span class="card-label">Hot 🔥</span>
+        <span class="card-value" id="cardHot">0</span>
+        <span class="card-sub">do mês</span>
+      </div>
+      <div class="card card-teal">
+        <span class="card-label">Spot 📍</span>
+        <span class="card-value" id="cardSpot">0</span>
+        <span class="card-sub">do mês</span>
+      </div>
+      <div class="card card-purple">
+        <span class="card-label">Colaboradores</span>
+        <span class="card-value" id="cardColabs">0</span>
+        <span class="card-sub">ativos hoje</span>
+      </div>
+    </section>
+
+    <section class="grid-main">
+      <div class="panel panel-table">
+        <div class="panel-header">
+          <h2>Registros do Mês</h2>
+          <div class="panel-actions">
+            <select id="filterCollab" class="select-sm">
+              <option value="">Todos</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table class="data-table" id="mainTable">
+            <thead><tr id="tableHead"></tr></thead>
+            <tbody id="tableBody"></tbody>
+            <tfoot id="tableFoot"></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel panel-charts">
+        <div class="panel-header">
+          <h2>Desempenho</h2>
+          <div class="chart-tabs">
+            <button class="tab-btn active" data-tab="bar">Barras</button>
+            <button class="tab-btn" data-tab="line">Linha</button>
+            <button class="tab-btn" data-tab="pie">Pizza</button>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="mainChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel panel-daily">
+      <div class="panel-header">
+        <h2>Evolução Diária — Hot vs Spot</h2>
+      </div>
+      <div class="chart-wrap chart-wrap-wide">
+        <canvas id="dailyChart"></canvas>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: REGISTRAR -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal" id="modalEntry">
+      <div class="modal-header">
+        <h3 id="modalTitle">Registrar Atendimento</h3>
+        <button class="modal-close" id="modalClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Data</label>
+            <input type="date" id="inputDate" class="input" />
+          </div>
+          <div class="form-group">
+            <label>Colaborador</label>
+            <select id="inputCollab" class="input">
+              <option value="">Selecionar...</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>🔥 Hot</label>
+            <input type="number" id="inputHot" class="input" min="0" value="0" />
+          </div>
+          <div class="form-group">
+            <label>📍 Spot</label>
+            <input type="number" id="inputSpot" class="input" min="0" value="0" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="inputStatus" class="input">
+            <option value="normal">Normal</option>
+            <option value="DM">DM (Dispensado/Folga)</option>
+            <option value="absent">Ausente —</option>
+          </select>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-ghost" id="btnModalCancel">Cancelar</button>
+          <button class="btn btn-primary" id="btnModalSave">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: HISTÓRICO -->
+  <div class="modal-overlay" id="historyOverlay">
+    <div class="modal modal-wide" id="modalHistory">
+      <div class="modal-header">
+        <h3>Histórico de Meses Anteriores</h3>
+        <button class="modal-close" id="historyClose">✕</button>
+      </div>
+      <div class="modal-body" id="historyBody">
+        <p class="loading-msg">Carregando histórico...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: COLABORADORES -->
+  <div class="modal-overlay" id="collabOverlay">
+    <div class="modal" id="modalCollab">
+      <div class="modal-header">
+        <h3>Gerenciar Colaboradores</h3>
+        <button class="modal-close" id="collabClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group" style="flex:1">
+            <label>Nome do colaborador</label>
+            <input type="text" id="inputCollabName" class="input" placeholder="Ex: João Silva" />
+          </div>
+          <button class="btn btn-primary" id="btnAddCollab" style="align-self:flex-end">Adicionar</button>
+        </div>
+        <div id="collabList" class="collab-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOVO MODAL: GERENCIAR PARTNUMBERS -->
+  <div class="modal-overlay" id="partnumberOverlay">
+    <div class="modal modal-wide" id="modalPartnumbers">
+      <div class="modal-header">
+        <h3>Gerenciar Lista de Partnumbers</h3>
+        <button class="modal-close" id="partnumberClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Adicionar partnumbers (um por linha, ou separados por vírgula)</label>
+          <textarea id="inputPartnumbersBulk" class="input" rows="4" placeholder="Ex:&#10;PN-1234&#10;PN-5678&#10;PN-9999"></textarea>
+        </div>
+        <div class="form-actions" style="justify-content:flex-start">
+          <button class="btn btn-primary" id="btnImportPartnumbers">Adicionar à Lista</button>
+        </div>
+        <div class="partnumber-list-header">
+          <span id="partnumberTotalLabel">0 partnumbers cadastrados</span>
+          <input type="text" id="partnumberSearch" class="input select-sm" placeholder="Buscar..." style="max-width:200px" />
+        </div>
+        <div id="partnumberList" class="collab-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOVO MODAL: ATUALIZAR QUANTIDADE DE PARTNUMBERS CONTADOS -->
+  <div class="modal-overlay" id="updateCountOverlay">
+    <div class="modal" id="modalUpdateCount">
+      <div class="modal-header">
+        <h3>Atualizar Quantidade Contada</h3>
+        <button class="modal-close" id="updateCountClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Quantidade total de partnumbers já contados</label>
+          <input type="number" id="inputPartCountedTotal" class="input" min="0" value="0" />
+        </div>
+        <p style="font-size:.8rem;color:var(--muted)">Esse número substitui o valor atual da barra de meta.</p>
+        <div class="form-actions">
+          <button class="btn btn-ghost" id="btnUpdateCountCancel">Cancelar</button>
+          <button class="btn btn-primary" id="btnUpdateCountSave">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FAB MOBILE -->
+  <button class="fab" id="fabAdd">+</button>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+  <!-- App (carregado por último, sem type="module") -->
+  <script src="app.js"></script>
+</body>
+</html>
